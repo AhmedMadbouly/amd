@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>ShereCar Robot Controller</title>
+    <meta charset="utf-8">
+
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/smoothness/jquery-ui-1.10.4.custom.css" rel="stylesheet">
+  </head>
+  <body>
+    <div class="navbar navbar-static-top navbar-default">
+      <div class="container">
+        <button class="navbar-toggle">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="/">ShereCar Robot Controller (http://sherecar.org)</a>
+        <div class="nav-collapse">
+        </div><!--/.nav-collapse -->
+      </div>
+    </div>
+    <div class="container page">
+        <div id="useraction-notice" class="alert alert-info"></div>
+        <div id="useraction-connection" class="well well-sm">
+          <div class="row">
+            <div id="connect-formfield">
+              <div class="col-md-8">
+                <input type="text" class="form-control" id="robot-address" placeholder="Enter Robot's Internet Address">
+              </div>
+              <div class="col-md-4">
+                <button type="button" id="robot-connect" class="btn btn-primary">Connect to robot</button>
+              </div>
+            </div>
+            <div id="connect-status">
+              <div class="col-md-8">
+                <input type="text" class="form-control" id="robot-connect-status" disabled>
+              </div>
+              <div class="col-md-4">
+                
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="content">
+          <div class="row">
+            <div class="picture col-md-6">
+              <h4>Robot Camera</h4>
+              <img id="image-robot-camera" src="car_cam_post.jpeg" alt="Robot Camera">
+            </div>
+            <div class="col-md-6">
+              <button type="button" id="emergency-stop" class="btn btn-danger btn-block">Emergency Stop</button>
+              <div class="row">
+                <h4>Robot Mode</h4>
+                <ul id="robot_mode" class="nav nav-tabs">
+                  <li class="active"><a href="#control-manual">Button Control</a></li>
+                  <li><a href="#control-slider">Slider Control</a></li>
+                  <li><a href="#control-face">Face Follow</a></li>
+                </ul>
+                <!-- Tab panes -->
+                <div class="tab-content">
+                  <div class="tab-pane active" id="control-manual">
+                    <h4>Controls</h4>
+                    <div class="row">
+                      <div class="col-sm-4"></div>
+                      <div class="col-sm-4">
+                        <button type="button" id="control-manual-forward-slow" class="btn btn-info btn-lg btn-block">Forward (up)</button>
+                      </div>
+                      <div class="col-sm-4"></div>
+                    </div>
+                    <div class="row">
+                      <div class="col-sm-4">
+                        <button type="button" id="control-manual-turn-left" class="btn btn-info btn-lg btn-block">Turn Left (left)</button>
+                      </div>
+                      <div class="col-sm-4">
+                        <button type="button" id="control-manual-reverse-slow" class="btn btn-info btn-lg btn-block">Backward (down)</button>
+                      </div>
+                      <div class="col-sm-4">
+                        <button type="button" id="control-manual-turn-right" class="btn btn-info btn-lg btn-block">Turn Right (right)</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tab-pane" id="control-slider">
+                    <h4>Controls</h4>
+                    <div class="row">
+                      <div class="col-sm-6">
+                        <h5>Steering</h5>
+                        <div id="control-slider-steering"></div>
+                        <br>
+                        <span id="control-slider-steering-value" class="badge">---</span>
+                        <button type="button" id="control-manual-neutral" class="btn btn-warning">Reset</button>
+                      </div>
+                      <div class="col-sm-6">
+                        <h5>Throttle</h5>
+                        <div class="row">
+                          <div class="col-sm-3">
+                            <div id="control-slider-throttle" style="height:100px;"></div>
+                            </div>
+                          <div class="col-sm-9">
+                            <input type="text" class="form-control" id="control-slider-throttle-for" placeholder="Run for X Milliseconds">
+                            <span id="control-slider-throttle-value" class="badge">---</span>
+                            <button type="button" id="control-manual-stop" class="btn btn-warning">Reset</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tab-pane" id="control-face">
+                    <h4>Controls</h4>
+                    <button type="button" id="control-face-begin" class="btn btn-success">Start Following Faces</button>
+                    <button type="button" id="control-face-stop" class="btn btn-warning">Stop Faces Routine</button>
+                  </div>
+                  <div class="tab-pane" id="control-line">
+                    <h4>Controls</h4>
+                    <button type="button" id="control-red-begin" class="btn btn-success">Start Following Red Block</button>
+                    <button type="button" id="control-red-stop" class="btn btn-warning">Stop Red Block Routine</button>
+                  </div>
+                </div>
+              </div>
+              <div class="status row">
+                <h4>Robot Status</h4>
+                <table id='robot-status' class="table table-condensed">
+                  <tr><th>Data</th><th>Value</th></tr>
+                  <tr>
+                    <td></td><td></td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <hr>
+        <footer class="footer">
+            <p>&copy; ShereCar</p>
+        </footer>
+    </div>
+    <script src="js/jquery.min.js"></script>
+    <script src="js/jquery-ui-1.10.4.custom.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="socket.io/socket.io.js"></script>
+    <script type=text/javascript>
+      // Hide application elements until connection opened
+      $('#useraction-notice').hide();
+      $('#connect-status').hide();
+      $('.content').hide();
+      
+      var socket = '';
+      var robotReady = false;
+      var url = document.URL;
+      
+      $(document).ready(function() {
+        $('#robot-address').val(url);
+        
+        $('#robot-connect').click(connectToRobot);
+      
+        $('#robot_mode a').click(function (e) {
+          e.preventDefault();
+          //sendCommand('change-mode');
+          console.log('Robot Mode Changed');
+          $(this).tab('show');
+        });
+        
+        $('body').on('keydown', function(event){keyboardEvent(event)});
+        $('body').on('keyup', function(event){keyboardEvent(event)});
+        
+        $('#emergency-stop').click(function(){sendCommand('stop')});
+        
+        $('#control-manual-forward-slow').on('mousedown', function(){sendCommand('manual-throttle-forward')});
+        $('#control-manual-reverse-slow').on('mousedown', function(){sendCommand('manual-throttle-reverse')});
+        $('#control-manual-forward-slow').on('mouseup', function(){sendCommand('manual-throttle-stop')}); 
+        $('#control-manual-reverse-slow').on('mouseup', function(){sendCommand('manual-throttle-stop')});
+        
+        $('#control-manual-turn-left').on('mousedown', function(){sendCommand('manual-turn-left')});
+        $('#control-manual-turn-right').on('mousedown', function(){sendCommand('manual-turn-right')});
+        $('#control-manual-turn-left').on('mouseup', function(){sendCommand('manual-turn-neutral')}); 
+        $('#control-manual-turn-right').on('mouseup', function(){sendCommand('manual-turn-neutral')});
+        
+        $('#control-face-begin').click(function(){sendCommand('face-begin')});
+        $('#control-face-stop').click(function(){sendCommand('face-stop')});
+        
+        $('#control-red-begin').click(function(){sendCommand('red-begin')});
+        $('#control-red-stop').click(function(){sendCommand('red-stop')});
+        
+        $( "#control-slider-steering" ).slider({
+          range: "min",
+          value: 75,
+          min: 40,
+          max: 100,
+          slide: function( event, ui ) {
+            $('#control-slider-steering-value').text(ui.value);
+            sendCommand('manual-turn-'+ui.value);
+          }
+        });
+        $('#control-manual-neutral').click(function(){
+          $('#control-slider-steering').slider ('value', 75);
+          $('#control-slider-steering-value').text(75);
+          sendCommand('manual-turn-neutral');
+        });
+        $('#control-slider-throttle').slider({
+          orientation: "vertical",
+          range: "min",
+          value: 90,
+          min: 0,
+          max: 180,
+          slide: function( event, ui ) {
+            var throttleValue = 180 - ui.value;
+            var throttleFor = parseInt($('#control-slider-throttle-for').val());
+            $('#control-slider-throttle-value').text(throttleValue);
+            console.log (throttleFor);
+            if (throttleFor > 0) {
+              sendCommand('manual-throttle-'+throttleValue+'-'+throttleFor);
+            }
+            else {
+              sendCommand('manual-throttle-'+throttleValue);
+            }
+          }
+        });
+        $('#control-manual-stop').click(function(){
+          $('#control-slider-throttle').slider ('value', 90);
+          $('#control-slider-throttle-value').text(90);
+          sendCommand('manual-throttle-stop');
+        });
+      });
+      $('#control-slider-steering-value').text(75);
+      $('#control-slider-throttle-value').text(90);
+      
+      function keyboardEvent (event) {
+        if (event.type == 'keyup') {
+          if (event.keyCode == 39 || event.keyCode == 37) {
+            sendCommand('manual-turn-neutral');
+          }
+          else if (event.keyCode == 38 || event.keyCode == 40) {
+            sendCommand('manual-throttle-stop');
+          }
+        }
+        else if (event.type == 'keydown') {
+          if (event.keyCode == 39) {//Right
+            sendCommand('manual-turn-right');
+          }
+          else if (event.keyCode == 37) {//Left
+            sendCommand('manual-turn-left');
+          }
+          else if (event.keyCode == 38) {//Up
+            sendCommand('manual-throttle-forward');
+          }
+          else if (event.keyCode == 40) {//Down
+            sendCommand('manual-throttle-reverse');
+          }
+        }
+      }
+      function connectToRobot () {
+        var address = $('#robot-address').val();
+        console.log('---attempting to connect to robot');
+        console.log('@' + address);
+        socket = io.connect(address);
+        socket.on('robot status', function (data) {
+          var status = data.data;
+          // Initial connection
+          if (status == 'server connected') {
+            $('#connect-formfield').hide();
+            $('#connect-status').show();
+            $('.content').show();
+            
+            console.log('---Successfully connected to robot');
+            $('#robot-connect-status').val('Connected to: ' + address);
+            robotReady = true;
+          }
+          // Subsequent updates (consider separating into difference calls)
+          else {
+            // Build status table
+            var newStatus = '<tr><th>Data</th><th>Value</th></tr>\n';
+            for (var key in status) {
+              newStatus += '<tr><td>' + key + '</td><td>' + status[key] + '</td></tr>\n';
+            }
+            $("#robot-status").html(newStatus);
+            
+            // Update Robot camera jpg image (date ensures no retrieval from cache)
+            d = new Date();
+            $("#image-robot-camera").attr("src", "car_cam_post.jpeg?"+d.getTime());
+          }
+        });
+        
+        socket.on('log', function (data) {
+          var logData = data.data;
+        });
+      }
+      function sendCommand (command) {
+      if (robotReady) {
+          console.log('---sending command');
+          console.log(command);
+          socket.emit('robot command', { data: command });
+        }
+      }
+    </script>
+  </body>
+</html>
